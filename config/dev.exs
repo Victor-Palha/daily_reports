@@ -64,3 +64,16 @@ config :phoenix, :plug_init_mode, :runtime
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+config :daily_reports, DailyReports.PromEx,
+  manual_metrics_start_delay: :no_delay,
+  drop_metrics_group: [],
+  grafana: [
+    host: "http://localhost:3000",
+    auth_token: "glsa_6bw0EshGYdYI7YZFilpydmJAxVzr8Cob_6dc41f1f",
+    upload_dashboards_on_start: true,
+    folder_name: "DRApp",
+    annotate_app_lifecycle: true
+  ],
+  prometheus_datasource_id: "Prometheus",
+  prometheus_default_selected_interval: "30s"

@@ -11,6 +11,27 @@ services:
     volumes:
       - daily-db-data:/bitnami/postgresql
 
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+
+    ports:
+      - 3000:3000
+    volumes:
+      - ./data/grafana/data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 volumes:
   daily-db-data:
     driver: local
