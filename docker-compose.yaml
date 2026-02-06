@@ -1,0 +1,16 @@
+services:
+  daily-db:
+    image: bitnami/postgresql:latest
+    container_name: daily-db
+    environment:
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=postgres
+      - POSTGRESQL_DATABASE=daily_reports_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - daily-db-data:/bitnami/postgresql
+
+volumes:
+  daily-db-data:
+    driver: local
