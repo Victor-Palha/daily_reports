@@ -77,3 +77,8 @@ config :daily_reports, DailyReports.PromEx,
   ],
   prometheus_datasource_id: "Prometheus",
   prometheus_default_selected_interval: "30s"
+
+# Guardian secret key for development
+config :daily_reports, DailyReports.Accounts.Guardian,
+  issuer: "daily_reports",
+  secret_key: "dev_secret_key_please_replace_in_production_with_mix_guardian_gen_secret"

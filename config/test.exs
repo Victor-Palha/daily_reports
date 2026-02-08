@@ -31,3 +31,11 @@ config :logger, level: :warning
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
+
+# Guardian secret key for testing
+config :daily_reports, DailyReports.Accounts.Guardian,
+  issuer: "daily_reports",
+  secret_key: "test_secret_key_for_testing_only_do_not_use_in_production"
+
+# Speed up bcrypt hashing in tests
+config :bcrypt_elixir, :log_rounds, 4
