@@ -1,4 +1,4 @@
-defmodule DailyReports.User do
+defmodule DailyReports.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -18,9 +18,9 @@ defmodule DailyReports.User do
     belongs_to :created_by_user, __MODULE__, foreign_key: :created_by, references: :id
 
     has_many :created_users, __MODULE__, foreign_key: :created_by
-    has_many :members, DailyReports.Member, foreign_key: :user_id
+    has_many :members, DailyReports.Projects.Member, foreign_key: :user_id
     has_many :projects, through: [:members, :project]
-    has_many :deactivated_projects, DailyReports.Project, foreign_key: :deactivated_by
+    has_many :deactivated_projects, DailyReports.Projects.Project, foreign_key: :deactivated_by
 
     timestamps(type: :utc_datetime)
   end

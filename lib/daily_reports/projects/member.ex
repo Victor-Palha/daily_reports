@@ -1,4 +1,4 @@
-defmodule DailyReports.Member do
+defmodule DailyReports.Projects.Member do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -27,10 +27,10 @@ defmodule DailyReports.Member do
   schema "members" do
     field :role, :string
 
-    belongs_to :project, DailyReports.Project, foreign_key: :project_id, references: :id
-    belongs_to :user, DailyReports.User, foreign_key: :user_id, references: :id
+    belongs_to :project, DailyReports.Projects.Project, foreign_key: :project_id, references: :id
+    belongs_to :user, DailyReports.Accounts.User, foreign_key: :user_id, references: :id
 
-    has_many :reports, DailyReports.Report, foreign_key: :created_by_id
+    has_many :reports, DailyReports.Reports.Report, foreign_key: :created_by_id
 
     timestamps(type: :utc_datetime, updated_at: false)
   end

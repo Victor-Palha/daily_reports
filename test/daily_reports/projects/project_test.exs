@@ -1,7 +1,7 @@
-defmodule DailyReports.ProjectTest do
+defmodule DailyReports.Projects.ProjectTest do
   use DailyReports.DataCase, async: true
 
-  alias DailyReports.Project
+  alias DailyReports.Projects.Project
   alias DailyReports.Fixtures
 
   describe "changeset/2" do

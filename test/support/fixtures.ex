@@ -5,7 +5,9 @@ defmodule DailyReports.Fixtures do
   """
 
   alias DailyReports.Repo
-  alias DailyReports.{User, Project, Member, Report}
+  alias DailyReports.Accounts.User
+  alias DailyReports.Projects.{Project, Member}
+  alias DailyReports.Reports.Report
 
   @doc """
   Generate a unique user email.

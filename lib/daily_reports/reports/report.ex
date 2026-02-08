@@ -1,4 +1,4 @@
-defmodule DailyReports.Report do
+defmodule DailyReports.Reports.Report do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -13,8 +13,11 @@ defmodule DailyReports.Report do
     field :impediments, :string
     field :next_steps, :string
 
-    belongs_to :project, DailyReports.Project, foreign_key: :project_id, references: :id
-    belongs_to :created_by, DailyReports.Member, foreign_key: :created_by_id, references: :id
+    belongs_to :project, DailyReports.Projects.Project, foreign_key: :project_id, references: :id
+
+    belongs_to :created_by, DailyReports.Projects.Member,
+      foreign_key: :created_by_id,
+      references: :id
 
     timestamps(type: :utc_datetime)
   end
