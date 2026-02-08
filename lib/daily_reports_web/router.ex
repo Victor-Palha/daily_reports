@@ -26,10 +26,11 @@ defmodule DailyReportsWeb.Router do
   scope "/api", DailyReportsWeb do
     pipe_through :api_auth
 
-    # User profile routes
+    # User routes
     scope "/users", Accounts do
       get "/me", UserController, :me
       put "/me", UserController, :update
+      post "/", UserController, :create
     end
   end
 

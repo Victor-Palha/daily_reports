@@ -5,6 +5,15 @@ defmodule DailyReportsWeb.Accounts.UserController do
 
   action_fallback DailyReportsWeb.FallbackController
 
+  plug :authorize_create when action in [:create]
+
+  defp authorize_create(conn, _opts) do
+    DailyReportsWeb.Plugs.AuthorizeUser.call(
+      conn,
+      DailyReportsWeb.Plugs.AuthorizeUser.init(roles: ["Master", "Manager"])
+    )
+  end
+
   @doc """
   Returns the current authenticated user's profile.
 
@@ -47,6 +56,50 @@ defmodule DailyReportsWeb.Accounts.UserController do
         |> put_status(:unprocessable_entity)
         |> put_view(json: DailyReportsWeb.ChangesetJSON)
         |> render(:error, changeset: changeset)
+    end
+  end
+
+  @doc """
+  Creates a new user.
+
+  Only Master and Manager role users can create new users.
+  Manager users cannot create Master role users.
+
+  ## Parameters
+    - email: User's email (required)
+    - password: User's password (required)
+    - name: User's name (optional)
+    - role: User's role (optional, defaults to "Collaborator")
+
+  ## Response
+    - 201: Returns created user data
+    - 400: Invalid parameters
+    - 401: User not authenticated
+    - 403: Insufficient permissions (Manager trying to create Master)
+    - 422: Validation errors
+  """
+  def create(conn, params) do
+    current_user = conn.assigns.current_user
+    requested_role = Map.get(params, "role", "Collaborator")
+
+    # Managers cannot create Master users
+    if current_user.role == "Manager" && requested_role == "Master" do
+      conn
+      |> put_status(:forbidden)
+      |> json(%{errors: %{detail: "Managers cannot create Master role users"}})
+    else
+      case Accounts.create_user(params) do
+        {:ok, user} ->
+          conn
+          |> put_status(:created)
+          |> render(:show, user: user)
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> put_view(json: DailyReportsWeb.ChangesetJSON)
+          |> render(:error, changeset: changeset)
+      end
     end
   end
 end

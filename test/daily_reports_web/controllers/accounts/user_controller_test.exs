@@ -141,4 +141,205 @@ defmodule DailyReportsWeb.Accounts.UserControllerTest do
       assert %{"errors" => %{"detail" => "Authentication required"}} = json_response(conn, 401)
     end
   end
+
+  describe "POST /api/users" do
+    test "Master user can create users with any role" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          email: "newuser@example.com",
+          password: "Password123!",
+          name: "New User",
+          role: "Manager"
+        })
+
+      assert %{"data" => user_data} = json_response(conn, 201)
+
+      assert user_data["email"] == "newuser@example.com"
+      assert user_data["name"] == "New User"
+      assert user_data["role"] == "Manager"
+      assert user_data["is_active"] == true
+      refute Map.has_key?(user_data, "password")
+      refute Map.has_key?(user_data, "password_hash")
+    end
+
+    test "Master user can create Master role users" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          email: "newmaster@example.com",
+          password: "Password123!",
+          name: "New Master",
+          role: "Master"
+        })
+
+      assert %{"data" => user_data} = json_response(conn, 201)
+
+      assert user_data["email"] == "newmaster@example.com"
+      assert user_data["role"] == "Master"
+    end
+
+    test "Manager user can create Collaborator users" do
+      manager_user = Fixtures.user_fixture(%{role: "Manager"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(manager_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          email: "collaborator@example.com",
+          password: "Password123!",
+          name: "New Collaborator",
+          role: "Collaborator"
+        })
+
+      assert %{"data" => user_data} = json_response(conn, 201)
+
+      assert user_data["email"] == "collaborator@example.com"
+      assert user_data["role"] == "Collaborator"
+    end
+
+    test "Manager user can create Manager users" do
+      manager_user = Fixtures.user_fixture(%{role: "Manager"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(manager_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          email: "manager2@example.com",
+          password: "Password123!",
+          name: "Another Manager",
+          role: "Manager"
+        })
+
+      assert %{"data" => user_data} = json_response(conn, 201)
+
+      assert user_data["email"] == "manager2@example.com"
+      assert user_data["role"] == "Manager"
+    end
+
+    test "Manager user cannot create Master role users" do
+      manager_user = Fixtures.user_fixture(%{role: "Manager"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(manager_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          email: "newmaster@example.com",
+          password: "Password123!",
+          name: "New Master",
+          role: "Master"
+        })
+
+      assert %{"errors" => %{"detail" => "Managers cannot create Master role users"}} =
+               json_response(conn, 403)
+    end
+
+    test "Collaborator user cannot create users" do
+      collaborator_user = Fixtures.user_fixture(%{role: "Collaborator"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(collaborator_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          email: "newuser@example.com",
+          password: "Password123!",
+          name: "New User"
+        })
+
+      assert %{"errors" => %{"detail" => "Insufficient permissions"}} = json_response(conn, 403)
+    end
+
+    test "returns 401 when not authenticated" do
+      conn =
+        build_conn()
+        |> post(~p"/api/users", %{
+          email: "newuser@example.com",
+          password: "Password123!",
+          name: "New User"
+        })
+
+      assert %{"errors" => %{"detail" => "Authentication required"}} = json_response(conn, 401)
+    end
+
+    test "returns 422 with invalid email" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          email: "invalid-email",
+          password: "Password123!",
+          name: "New User"
+        })
+
+      assert %{"errors" => errors} = json_response(conn, 422)
+      assert Map.has_key?(errors, "email")
+    end
+
+    test "returns 422 with missing required fields" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          name: "New User"
+        })
+
+      assert %{"errors" => errors} = json_response(conn, 422)
+      assert Map.has_key?(errors, "email") or Map.has_key?(errors, "password")
+    end
+
+    test "returns 422 with duplicate email" do
+      existing_user = Fixtures.user_fixture()
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          email: existing_user.email,
+          password: "Password123!",
+          name: "New User"
+        })
+
+      assert %{"errors" => errors} = json_response(conn, 422)
+      assert Map.has_key?(errors, "email")
+    end
+
+    test "defaults to Collaborator role when role not specified" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> post(~p"/api/users", %{
+          email: "defaultrole@example.com",
+          password: "Password123!",
+          name: "Default Role User"
+        })
+
+      assert %{"data" => user_data} = json_response(conn, 201)
+
+      assert user_data["email"] == "defaultrole@example.com"
+      assert user_data["role"] == "Collaborator"
+    end
+  end
 end

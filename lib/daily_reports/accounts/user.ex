@@ -41,11 +41,20 @@ defmodule DailyReports.Accounts.User do
     user
     |> cast(attrs, [:name, :email, :password, :role])
     |> validate_required([:email, :password])
+    |> put_default_role()
     |> validate_email()
     |> validate_password()
     |> validate_role()
     |> unique_constraint(:email)
     |> maybe_hash_password()
+  end
+
+  defp put_default_role(changeset) do
+    if get_field(changeset, :role) do
+      changeset
+    else
+      put_change(changeset, :role, "Collaborator")
+    end
   end
 
   defp validate_email(changeset) do
