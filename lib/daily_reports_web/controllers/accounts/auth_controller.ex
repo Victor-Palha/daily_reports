@@ -1,9 +1,24 @@
 defmodule DailyReportsWeb.Accounts.AuthController do
   use DailyReportsWeb, :controller
+  use OpenApiSpex.ControllerSpecs
 
   alias DailyReports.Accounts
+  alias DailyReportsWeb.Schemas
 
   action_fallback DailyReportsWeb.FallbackController
+
+  tags(["Authentication"])
+
+  operation(:login,
+    summary: "Login",
+    description: "Authenticates a user and returns JWT tokens in cookies",
+    request_body: {"Login credentials", "application/json", Schemas.LoginRequest, required: true},
+    responses: [
+      ok: {"Success", "application/json", Schemas.AuthResponse},
+      unauthorized: {"Invalid credentials", "application/json", Schemas.ErrorResponse},
+      bad_request: {"Missing parameters", "application/json", Schemas.ErrorResponse}
+    ]
+  )
 
   @doc """
   Authenticates a user and returns JWT tokens.
@@ -46,6 +61,16 @@ defmodule DailyReportsWeb.Accounts.AuthController do
     |> render(:error, message: "Email and password are required")
   end
 
+  operation(:refresh,
+    summary: "Refresh Token",
+    description: "Refreshes access token using refresh token from cookie",
+    responses: [
+      ok: {"Success", "application/json", Schemas.TokenResponse},
+      unauthorized:
+        {"Invalid or expired refresh token", "application/json", Schemas.ErrorResponse}
+    ]
+  )
+
   @doc """
   Refreshes access token using refresh token from cookie.
 
@@ -78,6 +103,14 @@ defmodule DailyReportsWeb.Accounts.AuthController do
         end
     end
   end
+
+  operation(:logout,
+    summary: "Logout",
+    description: "Logs out the user by revoking all tokens and clearing cookies",
+    responses: [
+      ok: {"Success", "application/json", Schemas.LogoutResponse}
+    ]
+  )
 
   @doc """
   Logs out the user by revoking all tokens and clearing cookies.

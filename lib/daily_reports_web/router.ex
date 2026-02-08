@@ -3,11 +3,34 @@ defmodule DailyReportsWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug OpenApiSpex.Plug.PutApiSpec, module: DailyReportsWeb.ApiSpec
   end
 
   pipeline :api_auth do
     plug :accepts, ["json"]
     plug DailyReportsWeb.Plugs.AuthenticateUser
+  end
+
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_flash
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
+
+  # OpenAPI documentation
+  scope "/api" do
+    pipe_through :api
+
+    get "/openapi", DailyReportsWeb.ApiSpecController, :spec
+  end
+
+  # Scalar API documentation UI
+  scope "/api" do
+    pipe_through :browser
+
+    get "/docs", DailyReportsWeb.ScalarController, :index
   end
 
   # Public API routes

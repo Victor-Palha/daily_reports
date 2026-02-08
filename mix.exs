@@ -54,7 +54,8 @@ defmodule DailyReports.MixProject do
       {:bandit, "~> 1.5"},
       {:prom_ex, "~> 1.11.0"},
       {:bcrypt_elixir, "~> 3.0"},
-      {:guardian, "~> 2.3"}
+      {:guardian, "~> 2.3"},
+      {:open_api_spex, "~> 3.21"}
     ]
   end
 

@@ -1,9 +1,13 @@
 defmodule DailyReportsWeb.Accounts.UserController do
   use DailyReportsWeb, :controller
+  use OpenApiSpex.ControllerSpecs
 
   alias DailyReports.Accounts
+  alias DailyReportsWeb.Schemas
 
   action_fallback DailyReportsWeb.FallbackController
+
+  tags(["Users"])
 
   plug :authorize_create when action in [:create]
   plug :authorize_list when action in [:index]
@@ -21,6 +25,50 @@ defmodule DailyReportsWeb.Accounts.UserController do
       DailyReportsWeb.Plugs.AuthorizeUser.init(roles: ["Master", "Manager"])
     )
   end
+
+  operation(:index,
+    summary: "List Users",
+    description:
+      "Lists all users with filtering and pagination. Requires Master or Manager role.",
+    parameters: [
+      name: [
+        in: :query,
+        type: :string,
+        description: "Filter by name (case-insensitive partial match)",
+        required: false
+      ],
+      role: [
+        in: :query,
+        type: :string,
+        description: "Filter by role (Master, Manager, or Collaborator)",
+        required: false
+      ],
+      is_active: [
+        in: :query,
+        type: :boolean,
+        description: "Filter by active status",
+        required: false
+      ],
+      page: [
+        in: :query,
+        type: :integer,
+        description: "Page number (default: 1)",
+        required: false
+      ],
+      page_size: [
+        in: :query,
+        type: :integer,
+        description: "Number of items per page (default: 20, max: 100)",
+        required: false
+      ]
+    ],
+    responses: [
+      ok: {"Success", "application/json", Schemas.UsersList},
+      unauthorized: {"Not authenticated", "application/json", Schemas.ErrorResponse},
+      forbidden: {"Insufficient permissions", "application/json", Schemas.ErrorResponse}
+    ],
+    security: [%{"cookieAuth" => []}]
+  )
 
   @doc """
   Lists all users with filtering and pagination.
@@ -47,6 +95,16 @@ defmodule DailyReportsWeb.Accounts.UserController do
     |> render(:index, result)
   end
 
+  operation(:me,
+    summary: "Get Current User",
+    description: "Returns the current authenticated user's profile",
+    responses: [
+      ok: {"Success", "application/json", Schemas.UserResponse},
+      unauthorized: {"Not authenticated", "application/json", Schemas.ErrorResponse}
+    ],
+    security: [%{"cookieAuth" => []}]
+  )
+
   @doc """
   Returns the current authenticated user's profile.
 
@@ -61,6 +119,27 @@ defmodule DailyReportsWeb.Accounts.UserController do
     |> put_status(:ok)
     |> render(:show, user: user)
   end
+
+  operation(:update,
+    summary: "Update Current User",
+    description: "Updates the current authenticated user's profile",
+    request_body: {
+      "Update user attributes",
+      "application/json",
+      Schemas.UpdateUserRequest
+    },
+    responses: [
+      ok: {"Success", "application/json", Schemas.UserResponse},
+      bad_request: {"Invalid parameters", "application/json", Schemas.ErrorResponse},
+      unauthorized: {"Not authenticated", "application/json", Schemas.ErrorResponse},
+      unprocessable_entity: {
+        "Validation errors",
+        "application/json",
+        Schemas.ValidationErrorResponse
+      }
+    ],
+    security: [%{"cookieAuth" => []}]
+  )
 
   @doc """
   Updates the current authenticated user's profile.
@@ -91,6 +170,30 @@ defmodule DailyReportsWeb.Accounts.UserController do
         |> render(:error, changeset: changeset)
     end
   end
+
+  operation(:create,
+    summary: "Create User",
+    description:
+      "Creates a new user. Requires Master or Manager role. Managers cannot create Master role users.",
+    request_body: {
+      "User attributes",
+      "application/json",
+      Schemas.CreateUserRequest,
+      required: true
+    },
+    responses: [
+      created: {"Success", "application/json", Schemas.UserResponse},
+      bad_request: {"Invalid parameters", "application/json", Schemas.ErrorResponse},
+      unauthorized: {"Not authenticated", "application/json", Schemas.ErrorResponse},
+      forbidden: {"Insufficient permissions", "application/json", Schemas.ErrorResponse},
+      unprocessable_entity: {
+        "Validation errors",
+        "application/json",
+        Schemas.ValidationErrorResponse
+      }
+    ],
+    security: [%{"cookieAuth" => []}]
+  )
 
   @doc """
   Creates a new user.
