@@ -71,6 +71,120 @@ defmodule DailyReports.Projects do
   def get_project(id), do: Repo.get(Project, id)
 
   @doc """
+  Gets a single project with all related data.
+
+  Returns the project with reports, members, and children preloaded,
+  all ordered by inserted_at (created_at).
+
+  Returns nil if the Project does not exist.
+
+  ## Examples
+
+      iex> get_project_with_details(project_id)
+      %Project{reports: [...], members: [...], children: [...]}
+
+  """
+  def get_project_with_details(id) do
+    Project
+    |> where([p], p.id == ^id)
+    |> preload(
+      reports:
+        ^from(r in DailyReports.Reports.Report,
+          order_by: [desc: r.inserted_at],
+          preload: [created_by: :user]
+        ),
+      members: ^from(m in Member, order_by: [desc: m.inserted_at], preload: [:user]),
+      children: ^from(c in Project, order_by: [desc: c.inserted_at])
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Lists projects with filtering and pagination.
+
+  For Master/Manager users, returns all projects.
+  For Collaborator users, returns only projects they are members of.
+
+  ## Parameters
+    - current_user: The current authenticated user (required)
+    - name: Filter by project name (optional, partial match)
+    - is_active: Filter by active status (optional)
+    - parent_id: Filter by parent project ID (optional)
+    - page: Page number (default: 1)
+    - page_size: Number of items per page (default: 20, max: 100)
+
+  ## Examples
+
+      iex> list_projects(current_user, %{\"page\" => \"1\"})
+      %{data: [%Project{}], meta: %{total_count: 10, page: 1, page_size: 20, total_pages: 1}}
+
+  """
+  def list_projects(current_user, params \\ %{}) do
+    name = Map.get(params, "name")
+    is_active = Map.get(params, "is_active")
+    parent_id = Map.get(params, "parent_id")
+    page = Map.get(params, "page", "1") |> String.to_integer()
+    page_size = min(Map.get(params, "page_size", "20") |> String.to_integer(), 100)
+
+    # Base query depends on user role
+    query =
+      if current_user.role in ["Master", "Manager"] do
+        # Master and Manager can see all projects
+        from(p in Project)
+      else
+        # Collaborators can only see projects they are members of
+        from(p in Project,
+          join: m in Member,
+          on: m.project_id == p.id and m.user_id == ^current_user.id
+        )
+      end
+
+    query = query |> order_by([p], desc: p.inserted_at)
+
+    # Apply filters
+    query =
+      if name do
+        where(query, [p], ilike(p.name, ^"%#{name}%"))
+      else
+        query
+      end
+
+    query =
+      if is_active do
+        active_bool = is_active == "true"
+        where(query, [p], p.is_active == ^active_bool)
+      else
+        query
+      end
+
+    query =
+      if parent_id do
+        where(query, [p], p.parent_id == ^parent_id)
+      else
+        query
+      end
+
+    total_count = Repo.aggregate(query, :count, :id)
+    total_pages = ceil(total_count / page_size)
+
+    projects =
+      query
+      |> limit(^page_size)
+      |> offset(^((page - 1) * page_size))
+      |> Repo.all()
+
+    %{
+      data: projects,
+      meta: %{
+        total_count: total_count,
+        page: page,
+        page_size: page_size,
+        total_pages: total_pages
+      }
+    }
+  end
+
+  @doc """
   Creates a member for a project.
 
   Validates that both the project and user exist before creating the member.

@@ -59,6 +59,8 @@ defmodule DailyReportsWeb.Router do
 
     # Project routes
     scope "/projects", Projects do
+      get "/", ProjectController, :index
+      get "/:id", ProjectController, :show
       post "/", ProjectController, :create
     end
 
