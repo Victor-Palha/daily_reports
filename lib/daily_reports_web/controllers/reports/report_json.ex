@@ -6,6 +6,16 @@ defmodule DailyReportsWeb.Reports.ReportJSON do
   alias DailyReports.Reports.Report
 
   @doc """
+  Renders a list of reports.
+  """
+  def index(%{data: reports, meta: meta}) do
+    %{
+      data: Enum.map(reports, &report_data/1),
+      meta: meta
+    }
+  end
+
+  @doc """
   Renders a single report.
   """
   def show(%{report: report}) do

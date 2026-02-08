@@ -72,6 +72,8 @@ defmodule DailyReportsWeb.Router do
 
     # Report routes
     scope "/reports", Reports do
+      get "/", ReportController, :index
+      get "/:id", ReportController, :show
       post "/", ReportController, :create
     end
   end
