@@ -29,9 +29,19 @@ defmodule DailyReports.Projects.Project do
   @doc false
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:identifier, :name, :description, :is_active, :parent_id, :deactivated_at])
+    |> cast(attrs, [
+      :identifier,
+      :name,
+      :description,
+      :is_active,
+      :parent_id,
+      :deactivated_at,
+      :deactivated_by
+    ])
     |> validate_required([:identifier, :name])
     |> validate_identifier()
+    |> foreign_key_constraint(:parent_id)
+    |> foreign_key_constraint(:deactivated_by)
     |> unique_constraint(:identifier)
   end
 

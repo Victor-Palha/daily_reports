@@ -43,9 +43,11 @@ defmodule DailyReports.Projects.Member do
   @doc false
   def changeset(member, attrs) do
     member
-    |> cast(attrs, [:role])
+    |> cast(attrs, [:project_id, :user_id, :role])
     |> validate_required([:role])
     |> validate_role()
+    |> foreign_key_constraint(:project_id)
+    |> foreign_key_constraint(:user_id)
     |> unique_constraint([:project_id, :user_id],
       name: :members_project_id_user_id_index,
       message: "user is already a member of this project"

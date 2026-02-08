@@ -25,8 +25,19 @@ defmodule DailyReports.Reports.Report do
   @doc false
   def changeset(report, attrs) do
     report
-    |> cast(attrs, [:title, :report_date, :summary, :achievements, :impediments, :next_steps])
+    |> cast(attrs, [
+      :project_id,
+      :created_by_id,
+      :title,
+      :report_date,
+      :summary,
+      :achievements,
+      :impediments,
+      :next_steps
+    ])
     |> validate_required([:title, :report_date])
+    |> foreign_key_constraint(:project_id)
+    |> foreign_key_constraint(:created_by_id)
     |> put_default_report_date()
     |> validate_report_date()
   end
