@@ -6,6 +6,16 @@ defmodule DailyReportsWeb.Projects.MemberJSON do
   alias DailyReports.Projects.Member
 
   @doc """
+  Renders a list of members.
+  """
+  def index(%{data: members, meta: meta}) do
+    %{
+      data: Enum.map(members, &member_data/1),
+      meta: meta
+    }
+  end
+
+  @doc """
   Renders a single member.
   """
   def show(%{member: member}) do

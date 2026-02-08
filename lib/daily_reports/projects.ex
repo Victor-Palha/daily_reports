@@ -104,10 +104,79 @@ defmodule DailyReports.Projects do
   def get_member(id), do: Repo.get(Member, id)
 
   @doc """
-  Preload members for a project.
+  Lists members of a project with filtering and pagination.
+
+  ## Parameters
+    - project_id: Project ID (required)
+    - role: Filter by role (optional)
+    - page: Page number (default: 1)
+    - page_size: Number of items per page (default: 20, max: 100)
+
+  ## Examples
+
+      iex> list_members(%{"project_id" => project_id})
+      %{data: [%Member{}], meta: %{total_count: 5, page: 1, page_size: 20, total_pages: 1}}
+
   """
-  def preload_members(member) do
-    Repo.preload(member, [:project, :user])
+  def list_members(params) do
+    project_id = Map.get(params, "project_id")
+    role = Map.get(params, "role")
+    page = Map.get(params, "page", "1") |> String.to_integer()
+    page_size = min(Map.get(params, "page_size", "20") |> String.to_integer(), 100)
+
+    query =
+      Member
+      |> where([m], m.project_id == ^project_id)
+      |> order_by([m], desc: m.inserted_at)
+
+    query =
+      if role do
+        where(query, [m], m.role == ^role)
+      else
+        query
+      end
+
+    total_count = Repo.aggregate(query, :count, :id)
+    total_pages = ceil(total_count / page_size)
+
+    members =
+      query
+      |> limit(^page_size)
+      |> offset(^((page - 1) * page_size))
+      |> preload([:project, :user])
+      |> Repo.all()
+
+    %{
+      data: members,
+      meta: %{
+        total_count: total_count,
+        page: page,
+        page_size: page_size,
+        total_pages: total_pages
+      }
+    }
+  end
+
+  @doc """
+  Checks if a user is a member of a project.
+
+  ## Examples
+
+      iex> is_member?(project_id, user_id)
+      true
+
+  """
+  def is_member?(project_id, user_id) do
+    Member
+    |> where([m], m.project_id == ^project_id and m.user_id == ^user_id)
+    |> Repo.exists?()
+  end
+
+  @doc """
+  Preloads associations for a member or list of members.
+  """
+  def preload_members(member_or_members) do
+    Repo.preload(member_or_members, [:project, :user])
   end
 
   # Private functions

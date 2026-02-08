@@ -64,6 +64,7 @@ defmodule DailyReportsWeb.Router do
 
     # Member routes
     scope "/members", Projects do
+      get "/", MemberController, :index
       post "/", MemberController, :create
     end
   end
