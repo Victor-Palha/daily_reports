@@ -35,11 +35,10 @@ defmodule DailyReports.Reports.Report do
       :impediments,
       :next_steps
     ])
-    |> validate_required([:title, :report_date])
+    |> validate_required([:title, :summary, :project_id, :created_by_id])
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:created_by_id)
     |> put_default_report_date()
-    |> validate_report_date()
   end
 
   defp put_default_report_date(changeset) do
@@ -48,10 +47,5 @@ defmodule DailyReports.Reports.Report do
     else
       put_change(changeset, :report_date, Date.utc_today())
     end
-  end
-
-  defp validate_report_date(changeset) do
-    changeset
-    |> validate_required([:report_date])
   end
 end

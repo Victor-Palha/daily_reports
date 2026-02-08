@@ -92,6 +92,8 @@ defmodule DailyReports.Fixtures do
     {:ok, report} =
       attrs
       |> Enum.into(%{
+        project_id: project.id,
+        created_by_id: member.id,
         title: "Daily Report",
         report_date: Date.utc_today(),
         summary: "Summary of the day",
@@ -102,8 +104,6 @@ defmodule DailyReports.Fixtures do
       |> Map.delete(:project)
       |> Map.delete(:member)
       |> then(&Report.changeset(%Report{}, &1))
-      |> Ecto.Changeset.put_assoc(:project, project)
-      |> Ecto.Changeset.put_assoc(:created_by, member)
       |> Repo.insert()
 
     report

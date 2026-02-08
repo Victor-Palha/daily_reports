@@ -104,6 +104,26 @@ defmodule DailyReports.Projects do
   def get_member(id), do: Repo.get(Member, id)
 
   @doc """
+  Gets a member by project_id and user_id.
+
+  Returns nil if the Member does not exist.
+
+  ## Examples
+
+      iex> get_member_by_project_and_user(project_id, user_id)
+      %Member{}
+
+      iex> get_member_by_project_and_user(bad_project_id, bad_user_id)
+      nil
+
+  """
+  def get_member_by_project_and_user(project_id, user_id) do
+    Member
+    |> where([m], m.project_id == ^project_id and m.user_id == ^user_id)
+    |> Repo.one()
+  end
+
+  @doc """
   Lists members of a project with filtering and pagination.
 
   ## Parameters

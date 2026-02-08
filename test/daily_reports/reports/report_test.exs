@@ -6,9 +6,15 @@ defmodule DailyReports.Reports.ReportTest do
 
   describe "changeset/2" do
     test "valid changeset with required fields" do
+      project = Fixtures.project_fixture()
+      member = Fixtures.member_fixture(%{project: project})
+
       changeset =
         Report.changeset(%Report{}, %{
           title: "Daily Report",
+          summary: "Summary of the report",
+          project_id: project.id,
+          created_by_id: member.id,
           report_date: Date.utc_today()
         })
 
@@ -16,8 +22,14 @@ defmodule DailyReports.Reports.ReportTest do
     end
 
     test "invalid changeset without title" do
+      project = Fixtures.project_fixture()
+      member = Fixtures.member_fixture(%{project: project})
+
       changeset =
         Report.changeset(%Report{}, %{
+          summary: "Summary",
+          project_id: project.id,
+          created_by_id: member.id,
           report_date: Date.utc_today()
         })
 
@@ -25,27 +37,48 @@ defmodule DailyReports.Reports.ReportTest do
       assert "can't be blank" in errors_on(changeset).title
     end
 
-    test "invalid changeset without report_date" do
-      changeset = Report.changeset(%Report{}, %{title: "Daily Report"})
+    test "invalid changeset without summary" do
+      project = Fixtures.project_fixture()
+      member = Fixtures.member_fixture(%{project: project})
+
+      changeset =
+        Report.changeset(%Report{}, %{
+          title: "Daily Report",
+          project_id: project.id,
+          created_by_id: member.id
+        })
 
       refute changeset.valid?
-      assert "can't be blank" in errors_on(changeset).report_date
+      assert "can't be blank" in errors_on(changeset).summary
     end
 
     test "sets default report_date to today when not provided" do
-      changeset = Report.changeset(%Report{}, %{title: "Daily Report"})
+      project = Fixtures.project_fixture()
+      member = Fixtures.member_fixture(%{project: project})
 
-      # Note: the changeset will have a report_date set, but it's still invalid
-      # because the validation runs after the default is set
+      changeset =
+        Report.changeset(%Report{}, %{
+          title: "Daily Report",
+          summary: "Summary",
+          project_id: project.id,
+          created_by_id: member.id
+        })
+
+      assert changeset.valid?
       assert get_change(changeset, :report_date) == Date.utc_today()
     end
 
     test "valid changeset with all optional fields" do
+      project = Fixtures.project_fixture()
+      member = Fixtures.member_fixture(%{project: project})
+
       changeset =
         Report.changeset(%Report{}, %{
           title: "Weekly Report",
-          report_date: Date.utc_today(),
           summary: "Week summary",
+          project_id: project.id,
+          created_by_id: member.id,
+          report_date: Date.utc_today(),
           achievements: "Completed features X, Y, Z",
           impediments: "Blocked by API issues",
           next_steps: "Continue with feature A"
@@ -55,11 +88,16 @@ defmodule DailyReports.Reports.ReportTest do
     end
 
     test "accepts past dates" do
+      project = Fixtures.project_fixture()
+      member = Fixtures.member_fixture(%{project: project})
       past_date = Date.add(Date.utc_today(), -7)
 
       changeset =
         Report.changeset(%Report{}, %{
           title: "Past Report",
+          summary: "Past summary",
+          project_id: project.id,
+          created_by_id: member.id,
           report_date: past_date
         })
 
@@ -79,13 +117,12 @@ defmodule DailyReports.Reports.ReportTest do
         summary: "Sprint completed successfully",
         achievements: "All tasks done",
         impediments: "None",
-        next_steps: "Plan next sprint"
+        next_steps: "Plan next sprint",
+        project_id: project.id,
+        created_by_id: member.id
       }
 
-      changeset =
-        Report.changeset(%Report{}, attrs)
-        |> Ecto.Changeset.put_assoc(:project, project)
-        |> Ecto.Changeset.put_assoc(:created_by, member)
+      changeset = Report.changeset(%Report{}, attrs)
 
       assert {:ok, report} = Repo.insert(changeset)
 
@@ -105,39 +142,18 @@ defmodule DailyReports.Reports.ReportTest do
       changeset =
         Report.changeset(%Report{}, %{
           title: "Minimal Report",
+          summary: "Minimal summary",
+          project_id: project.id,
+          created_by_id: member.id,
           report_date: Date.utc_today()
         })
-        |> Ecto.Changeset.put_assoc(:project, project)
-        |> Ecto.Changeset.put_assoc(:created_by, member)
 
       assert {:ok, report} = Repo.insert(changeset)
 
       assert report.title == "Minimal Report"
       assert report.report_date == Date.utc_today()
-      assert is_nil(report.summary)
+      assert report.summary == "Minimal summary"
       assert is_nil(report.achievements)
-    end
-
-    test "allows multiple reports for same project" do
-      project = Fixtures.project_fixture()
-      member = Fixtures.member_fixture(%{project: project})
-
-      Fixtures.report_fixture(%{
-        project: project,
-        member: member,
-        title: "Report 1"
-      })
-
-      changeset =
-        Report.changeset(%Report{}, %{
-          title: "Report 2",
-          report_date: Date.utc_today()
-        })
-        |> Ecto.Changeset.put_assoc(:project, project)
-        |> Ecto.Changeset.put_assoc(:created_by, member)
-
-      assert {:ok, report} = Repo.insert(changeset)
-      assert report.title == "Report 2"
     end
 
     test "allows reports from different members" do
@@ -154,10 +170,11 @@ defmodule DailyReports.Reports.ReportTest do
       changeset =
         Report.changeset(%Report{}, %{
           title: "Member 2 Report",
+          summary: "Member 2 summary",
+          project_id: project.id,
+          created_by_id: member2.id,
           report_date: Date.utc_today()
         })
-        |> Ecto.Changeset.put_assoc(:project, project)
-        |> Ecto.Changeset.put_assoc(:created_by, member2)
 
       assert {:ok, report} = Repo.insert(changeset)
       assert report.created_by_id == member2.id
