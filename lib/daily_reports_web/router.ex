@@ -61,6 +61,11 @@ defmodule DailyReportsWeb.Router do
     scope "/projects", Projects do
       post "/", ProjectController, :create
     end
+
+    # Member routes
+    scope "/members", Projects do
+      post "/", MemberController, :create
+    end
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
