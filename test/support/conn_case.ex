@@ -28,11 +28,21 @@ defmodule DailyReportsWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import DailyReportsWeb.ConnCase
+
+      alias DailyReports.Repo
     end
   end
 
   setup tags do
     DailyReports.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
+  end
+
+  @doc """
+  Helper function to get a response cookie by name.
+  """
+  def get_resp_cookie(conn, key) do
+    conn = Plug.Conn.fetch_cookies(conn)
+    conn.resp_cookies[key]
   end
 end

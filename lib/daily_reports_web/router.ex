@@ -5,8 +5,32 @@ defmodule DailyReportsWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :api_auth do
+    plug :accepts, ["json"]
+    plug DailyReportsWeb.Plugs.AuthenticateUser
+  end
+
+  # Public API routes
   scope "/api", DailyReportsWeb do
     pipe_through :api
+
+    # Authentication routes
+    scope "/auth", Accounts do
+      post "/login", AuthController, :login
+      post "/refresh", AuthController, :refresh
+      post "/logout", AuthController, :logout
+    end
+  end
+
+  # Protected API routes
+  scope "/api", DailyReportsWeb do
+    pipe_through :api_auth
+
+    # User profile routes
+    scope "/users", Accounts do
+      get "/me", UserController, :me
+      put "/me", UserController, :update
+    end
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
