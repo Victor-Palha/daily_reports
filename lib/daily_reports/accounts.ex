@@ -44,6 +44,117 @@ defmodule DailyReports.Accounts do
   end
 
   @doc """
+  Lists users with filtering and pagination.
+
+  ## Options
+    - :name - Filter by name (case-insensitive partial match)
+    - :role - Filter by role (exact match)
+    - :is_active - Filter by active status (boolean)
+    - :page - Page number (default: 1)
+    - :page_size - Number of items per page (default: 20, max: 100)
+
+  ## Examples
+
+      iex> list_users(%{page: 1, page_size: 10})
+      %{
+        users: [%User{}, ...],
+        total_count: 50,
+        page: 1,
+        page_size: 10,
+        total_pages: 5
+      }
+
+      iex> list_users(%{name: "john", role: "Manager"})
+      %{users: [...], ...}
+
+  """
+  def list_users(params \\ %{}) do
+    page = get_page(params)
+    page_size = get_page_size(params)
+
+    query =
+      User
+      |> apply_user_filters(params)
+      |> preload([:created_by_user, :members, :projects])
+
+    total_count = Repo.aggregate(query, :count, :id)
+    total_pages = ceil(total_count / page_size)
+
+    users =
+      query
+      |> limit(^page_size)
+      |> offset(^((page - 1) * page_size))
+      |> order_by([u], desc: u.inserted_at, asc: u.name)
+      |> Repo.all()
+
+    %{
+      users: users,
+      total_count: total_count,
+      page: page,
+      page_size: page_size,
+      total_pages: total_pages
+    }
+  end
+
+  defp apply_user_filters(query, params) do
+    query
+    |> filter_by_name(params)
+    |> filter_by_role(params)
+    |> filter_by_active_status(params)
+  end
+
+  defp filter_by_name(query, %{"name" => name}) when is_binary(name) and name != "" do
+    search_term = "%#{name}%"
+    where(query, [u], ilike(u.name, ^search_term))
+  end
+
+  defp filter_by_name(query, _params), do: query
+
+  defp filter_by_role(query, %{"role" => role}) when is_binary(role) and role != "" do
+    where(query, [u], u.role == ^role)
+  end
+
+  defp filter_by_role(query, _params), do: query
+
+  defp filter_by_active_status(query, %{"is_active" => is_active}) when is_boolean(is_active) do
+    where(query, [u], u.is_active == ^is_active)
+  end
+
+  defp filter_by_active_status(query, %{"is_active" => "true"}),
+    do: where(query, [u], u.is_active == true)
+
+  defp filter_by_active_status(query, %{"is_active" => "false"}),
+    do: where(query, [u], u.is_active == false)
+
+  defp filter_by_active_status(query, _params), do: query
+
+  defp get_page(%{"page" => page}) when is_binary(page) do
+    case Integer.parse(page) do
+      {num, _} when num > 0 -> num
+      _ -> 1
+    end
+  end
+
+  defp get_page(%{"page" => page}) when is_integer(page) and page > 0, do: page
+  defp get_page(_params), do: 1
+
+  defp get_page_size(%{"page_size" => page_size}) when is_binary(page_size) do
+    case Integer.parse(page_size) do
+      {num, _} when num > 0 and num <= 100 -> num
+      {num, _} when num > 100 -> 100
+      _ -> 20
+    end
+  end
+
+  defp get_page_size(%{"page_size" => page_size})
+       when is_integer(page_size) and page_size > 0 and page_size <= 100, do: page_size
+
+  defp get_page_size(%{"page_size" => page_size}) when is_integer(page_size) and page_size > 100,
+    do: 100
+
+  defp get_page_size(_params), do: 20
+
+  @doc """
   Creates a user.
 
   ## Examples

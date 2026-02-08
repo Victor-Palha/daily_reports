@@ -28,6 +28,7 @@ defmodule DailyReportsWeb.Router do
 
     # User routes
     scope "/users", Accounts do
+      get "/", UserController, :index
       get "/me", UserController, :me
       put "/me", UserController, :update
       post "/", UserController, :create

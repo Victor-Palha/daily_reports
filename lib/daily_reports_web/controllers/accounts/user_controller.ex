@@ -6,12 +6,45 @@ defmodule DailyReportsWeb.Accounts.UserController do
   action_fallback DailyReportsWeb.FallbackController
 
   plug :authorize_create when action in [:create]
+  plug :authorize_list when action in [:index]
 
   defp authorize_create(conn, _opts) do
     DailyReportsWeb.Plugs.AuthorizeUser.call(
       conn,
       DailyReportsWeb.Plugs.AuthorizeUser.init(roles: ["Master", "Manager"])
     )
+  end
+
+  defp authorize_list(conn, _opts) do
+    DailyReportsWeb.Plugs.AuthorizeUser.call(
+      conn,
+      DailyReportsWeb.Plugs.AuthorizeUser.init(roles: ["Master", "Manager"])
+    )
+  end
+
+  @doc """
+  Lists all users with filtering and pagination.
+
+  Only Master and Manager role users can list users.
+
+  ## Query Parameters
+    - name: Filter by name (case-insensitive partial match)
+    - role: Filter by role ("Master", "Manager", or "Collaborator")
+    - is_active: Filter by active status ("true" or "false")
+    - page: Page number (default: 1)
+    - page_size: Number of items per page (default: 20, max: 100)
+
+  ## Response
+    - 200: Returns paginated user data with metadata
+    - 401: User not authenticated
+    - 403: Insufficient permissions
+  """
+  def index(conn, params) do
+    result = Accounts.list_users(params)
+
+    conn
+    |> put_status(:ok)
+    |> render(:index, result)
   end
 
   @doc """

@@ -39,12 +39,13 @@ defmodule DailyReports.Accounts.User do
   @doc false
   def registration_changeset(user, attrs) do
     user
-    |> cast(attrs, [:name, :email, :password, :role])
+    |> cast(attrs, [:name, :email, :password, :role, :created_by])
     |> validate_required([:email, :password])
     |> put_default_role()
     |> validate_email()
     |> validate_password()
     |> validate_role()
+    |> foreign_key_constraint(:created_by)
     |> unique_constraint(:email)
     |> maybe_hash_password()
   end

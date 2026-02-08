@@ -342,4 +342,241 @@ defmodule DailyReportsWeb.Accounts.UserControllerTest do
       assert user_data["role"] == "Collaborator"
     end
   end
+
+  describe "GET /api/users" do
+    test "Master user can list all users" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      # Create additional users
+      Fixtures.user_fixture(%{name: "User 1", role: "Collaborator"})
+      Fixtures.user_fixture(%{name: "User 2", role: "Manager"})
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert length(users) == 3
+      assert meta["total_count"] == 3
+      assert meta["page"] == 1
+      assert meta["page_size"] == 20
+      assert meta["total_pages"] == 1
+    end
+
+    test "Manager user can list all users" do
+      manager_user = Fixtures.user_fixture(%{role: "Manager"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(manager_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users")
+
+      assert %{"data" => users, "meta" => _meta} = json_response(conn, 200)
+
+      assert is_list(users)
+    end
+
+    test "Collaborator user cannot list users" do
+      collaborator_user = Fixtures.user_fixture(%{role: "Collaborator"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(collaborator_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users")
+
+      assert %{"errors" => %{"detail" => "Insufficient permissions"}} = json_response(conn, 403)
+    end
+
+    test "filters users by name" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      Fixtures.user_fixture(%{name: "John Doe", role: "Collaborator"})
+      Fixtures.user_fixture(%{name: "Jane Smith", role: "Collaborator"})
+      Fixtures.user_fixture(%{name: "John Smith", role: "Manager"})
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?name=john")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert meta["total_count"] == 2
+
+      assert Enum.all?(users, fn user ->
+               String.contains?(String.downcase(user["name"]), "john")
+             end)
+    end
+
+    test "filters users by role" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      Fixtures.user_fixture(%{role: "Collaborator"})
+      Fixtures.user_fixture(%{role: "Collaborator"})
+      Fixtures.user_fixture(%{role: "Manager"})
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?role=Collaborator")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert meta["total_count"] == 2
+      assert Enum.all?(users, fn user -> user["role"] == "Collaborator" end)
+    end
+
+    test "filters users by active status" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      _active_user = Fixtures.user_fixture(%{role: "Collaborator"})
+      inactive_user = Fixtures.user_fixture(%{role: "Collaborator"})
+      Accounts.update_user(inactive_user, %{is_active: false})
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?is_active=false")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert meta["total_count"] == 1
+      assert Enum.all?(users, fn user -> user["is_active"] == false end)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?is_active=true")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert meta["total_count"] >= 2
+      assert Enum.all?(users, fn user -> user["is_active"] == true end)
+    end
+
+    test "combines multiple filters" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      Fixtures.user_fixture(%{name: "John Manager", role: "Manager"})
+      Fixtures.user_fixture(%{name: "John Collaborator", role: "Collaborator"})
+      Fixtures.user_fixture(%{name: "Jane Manager", role: "Manager"})
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?name=john&role=Manager")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert meta["total_count"] == 1
+      assert hd(users)["name"] == "John Manager"
+      assert hd(users)["role"] == "Manager"
+    end
+
+    test "supports pagination" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      # Create 25 users
+      for i <- 1..25 do
+        Fixtures.user_fixture(%{name: "User #{i}", role: "Collaborator"})
+      end
+
+      # Page 1
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?page=1&page_size=10")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert length(users) == 10
+      assert meta["page"] == 1
+      assert meta["page_size"] == 10
+      assert meta["total_count"] == 26
+      assert meta["total_pages"] == 3
+
+      # Page 2
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?page=2&page_size=10")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert length(users) == 10
+      assert meta["page"] == 2
+
+      # Last page
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?page=3&page_size=10")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert length(users) == 6
+      assert meta["page"] == 3
+    end
+
+    test "defaults to page 1 and page_size 20" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users")
+
+      assert %{"meta" => meta} = json_response(conn, 200)
+
+      assert meta["page"] == 1
+      assert meta["page_size"] == 20
+    end
+
+    test "limits page_size to 100" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?page_size=500")
+
+      assert %{"meta" => meta} = json_response(conn, 200)
+
+      assert meta["page_size"] == 100
+    end
+
+    test "returns empty list when no users match filters" do
+      master_user = Fixtures.user_fixture(%{role: "Master"})
+      {:ok, access_token, _refresh_token} = Accounts.generate_tokens(master_user)
+
+      conn =
+        build_conn()
+        |> put_req_cookie("access_token", access_token)
+        |> get(~p"/api/users?name=NonexistentUser")
+
+      assert %{"data" => users, "meta" => meta} = json_response(conn, 200)
+
+      assert users == []
+      assert meta["total_count"] == 0
+      assert meta["total_pages"] == 0
+    end
+
+    test "returns 401 when not authenticated" do
+      conn = build_conn() |> get(~p"/api/users")
+
+      assert %{"errors" => %{"detail" => "Authentication required"}} = json_response(conn, 401)
+    end
+  end
 end
