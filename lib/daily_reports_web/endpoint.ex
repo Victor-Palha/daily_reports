@@ -39,7 +39,7 @@ defmodule DailyReportsWeb.Endpoint do
     cookie_key: "request_logger"
 
   plug CORSPlug,
-    origin: "*",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     headers: ["*"]
 
