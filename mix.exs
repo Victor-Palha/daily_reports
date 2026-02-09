@@ -55,7 +55,8 @@ defmodule DailyReports.MixProject do
       {:prom_ex, "~> 1.11.0"},
       {:bcrypt_elixir, "~> 3.0"},
       {:guardian, "~> 2.3"},
-      {:open_api_spex, "~> 3.21"}
+      {:open_api_spex, "~> 3.21"},
+      {:cors_plug, "~> 3.0"}
     ]
   end
 
